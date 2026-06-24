@@ -1,0 +1,90 @@
+// Crown Heights Rentals data model
+// docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  HOST
+  ADMIN
+}
+
+enum PropertyStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  DECLINED
+  CANCELLED
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         Role       @default(GUEST)
+  createdAt    DateTime   @default(now())
+  properties   Property[] @relation("HostProperties")
+  bookings     Booking[]  @relation("GuestBookings")
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Property {
+  id            String         @id @default(cuid())
+  title         String
+  description   String
+  location      String
+  pricePerNight Int
+  bedrooms      Int            @default(1)
+  maxGuests     Int            @default(2)
+  imageUrl      String
+  status        PropertyStatus @default(PENDING)
+  hostId        String
+  host          User           @relation("HostProperties", fields: [hostId], references: [id], onDelete: Cascade)
+  bookings      Booking[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([hostId])
+  @@index([status])
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  propertyId String
+  property   Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  guestId    String
+  guest      User          @relation("GuestBookings", fields: [guestId], references: [id], onDelete: Cascade)
+  checkIn    DateTime
+  checkOut   DateTime
+  guests     Int           @default(1)
+  message    String        @default("")
+  status     BookingStatus @default(REQUESTED)
+  createdAt  DateTime      @default(now())
+
+  @@index([propertyId])
+  @@index([guestId])
+}
